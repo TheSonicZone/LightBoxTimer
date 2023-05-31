@@ -9,11 +9,14 @@
 #include <msp430.h>
 #include <stdio.h>
 #include "timer.h"
+#include "display.h"
 
 #define LED1 BIT0
 
 
+// Globals
 
+extern display_data displaydata;
 
 
 
@@ -38,9 +41,21 @@ int main(void){
 
     // Configure ports
     //------------------
-    P1DIR = 0x0F;                               // P1.0 has LED on this pin (MSP430 Launchpad)
-    P1OUT = 0x02;                               // BIT 1 = HIGH, all others = LOW
+    P1DIR = 0xFF;                               // P1.0 drives all common anode segment a - f & dp
+    P1OUT = 0xFF;                               // Initialise all as HIGH (LED segments OFF)
+    P2DIR = 0xDF;                               // P2.0 to P2.4 anode drivers (logic 0 = drive on) P2.5 = button input, P2.6 = relay drive, P2.7 = buzzer drive
+    P2OUT = 0x1F;                               // Initialise
+    P2SEL2 = P2SEL2 & 0x3F;
+    P2SEL = P2SEL & 0x3F;                       // P2.7 and P2.6 made GPIO
 
+//   P2OUT &= ~0x01;
+//    P1OUT &= ~0x04;
+
+    displaydata.digit1 = 0x80;
+    displaydata.digit2 = 0xA4;
+    displaydata.misc = 0xFC;
+    displaydata.digit3 = 0xA4;
+    displaydata.digit4 = 0x80;
 
     // Configure WDT as systick timer
     //--------------------------------
@@ -58,6 +73,12 @@ int main(void){
     //-----------------------------
     InitTimerSystem();
 
+    // Hardware test code
+//    P2OUT |= 0x40;                  // Relay test
+//    P2OUT |= 0x80;                  // Buzzer test
+
+    // Main loop
+    //------------------------------------------------------------------------------------
     for(;;){
 
     }
@@ -73,8 +94,8 @@ int main(void){
 __interrupt void watchdog_timer(void){
 
     CallInISR();
-
-    P1OUT ^= LED1;
+    MuxDisplay();
+//    P1OUT ^= LED1;
 
 
 }

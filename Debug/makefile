@@ -10,6 +10,7 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
+"./display.obj" \
 "./main.obj" \
 "./timer.obj" \
 "../lnk_msp430g2553.cmd" \
@@ -155,8 +156,8 @@ LightBoxTimer.hex: $(EXE_OUTPUTS)
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "main.obj" "timer.obj" 
-	-$(RM) "main.d" "timer.d" 
+	-$(RM) "display.obj" "main.obj" "timer.obj" 
+	-$(RM) "display.d" "main.d" "timer.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
