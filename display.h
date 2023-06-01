@@ -20,6 +20,8 @@ typedef struct{
 
 // Function Prototypes
 //--------------------
+//------------------------------------------------------------------------------------------------
+unsigned char GetSegmentData(unsigned char val);
 void MuxDisplay(void);
 
 

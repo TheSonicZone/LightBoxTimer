@@ -11,17 +11,53 @@
 #include "timer.h"
 #include "display.h"
 
-#define LED1 BIT0
+#define RELAY BIT6
+#define BUZZER BIT7
 
 
 // Globals
-
+//------------------------------
 extern display_data displaydata;
 
+
+// Variables
+//-------------------------------
+unsigned int timebase = 0;
+unsigned int time_seconds = 0;
+
+// Main timer registers
+unsigned char seconds = 0;
+unsigned char minutes = 0;
 
 
 // Functions
 
+//-------------------------------------------------------------------------------
+// Name: DecrementTime
+// Function: Decrement the time loaded into the time registers and stop when zero
+// Note: Timer registers are in BCD format
+//--------------------------------------------------------------------------------
+void DecrementTime(void){
+
+    // Only run the process if there's a valid value in the timer registers
+    if(seconds == 0 &&  minutes == 0){
+        return;
+    }
+
+    seconds--;
+    if ((seconds & 0x0F) == 0x0F){
+        seconds = seconds - 6;
+    }
+
+    if (seconds == 0xF9){
+        seconds = 0x59;
+        minutes--;
+        if ((minutes & 0x0F) == 0x0F){
+            minutes = minutes - 6;
+        }
+    }
+
+}
 
 
 
@@ -51,11 +87,15 @@ int main(void){
 //   P2OUT &= ~0x01;
 //    P1OUT &= ~0x04;
 
-    displaydata.digit1 = 0x80;
-    displaydata.digit2 = 0xA4;
+    seconds = 0x55;
+    minutes = 0x13;
+
+    // Initial display update
+    displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
+    displaydata.digit2 = GetSegmentData(minutes & 0x0F);
     displaydata.misc = 0xFC;
-    displaydata.digit3 = 0xA4;
-    displaydata.digit4 = 0x80;
+    displaydata.digit3 = GetSegmentData((seconds >> 4) & 0x0F);
+    displaydata.digit4 = GetSegmentData(seconds & 0x0F);
 
     // Configure WDT as systick timer
     //--------------------------------
@@ -80,6 +120,13 @@ int main(void){
     // Main loop
     //------------------------------------------------------------------------------------
     for(;;){
+        Delay(400);
+        displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
+        displaydata.digit2 = GetSegmentData(minutes & 0x0F);
+        displaydata.misc = 0xFC;
+        displaydata.digit3 = GetSegmentData((seconds >> 4) & 0x0F);
+        displaydata.digit4 = GetSegmentData(seconds & 0x0F);
+
 
     }
 
@@ -95,7 +142,17 @@ __interrupt void watchdog_timer(void){
 
     CallInISR();
     MuxDisplay();
-//    P1OUT ^= LED1;
+    timebase++;
+    if(timebase > 30){
+        timebase = 0;
+        // We hit here every 1mS
+        time_seconds++;
+        if(time_seconds > 999){
+            time_seconds = 0;
+            DecrementTime();
+        }
+    }
+
 
 
 }

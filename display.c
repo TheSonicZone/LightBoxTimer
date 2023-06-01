@@ -16,6 +16,57 @@ unsigned char divider = 0;
 display_data displaydata;
 
 
+//----------------------------------------------------------------------------------------------
+// Name: GetSegmentData
+// Function: Return segment data (8 bits) from input value
+//   Segment Data to suit LYD common anode display
+// Parameter: Value from 0 to F
+// Returns: 7 segment bit pattern
+//------------------------------------------------------------------------------------------------
+unsigned char GetSegmentData(unsigned char val){
+
+    switch(val){
+    case 0x00:
+        return 0xC0;
+    case 0x01:
+        return 0xF9;
+    case 0x02:
+        return 0xA4;
+    case 0x03:
+        return 0xB0;
+    case 0x04:
+        return 0x99;
+    case 0x05:
+        return 0x92;
+    case 0x06:
+        return 0x82;
+    case 0x07:
+        return 0xF8;
+    case 0x08:
+        return 0x80;
+    case 0x09:
+        return 0x90;
+    case 0x0A:
+        return 0x88;
+    case 0x0B:
+        return 0x83;
+    case 0x0C:
+        return 0xC6;
+    case 0x0D:
+        return 0xA1;
+    case 0x0E:
+        return 0x86;
+    case 0x0F:
+        return 0x8E;
+
+
+    default:
+        return 0x00;
+    }
+
+}
+
+//---------------------------------------------------------------------------------------------
 // Name: MuxDisplay
 // Function: Do a display multiplex cycle
 // This routine to be called in a timer interrupt so that the display is driven continuously
