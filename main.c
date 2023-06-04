@@ -19,6 +19,13 @@
 //------------------------------
 extern display_data displaydata;
 
+// Definitions
+#define true   1
+#define false  0
+
+#define idle 0
+#define run  1
+#define stop 2
 
 // Variables
 //-------------------------------
@@ -29,8 +36,58 @@ unsigned int time_seconds = 0;
 unsigned char seconds = 0;
 unsigned char minutes = 0;
 
+unsigned char timer_run = false;
+unsigned char keydown = false;
+unsigned int beep_duration = 0;
+unsigned char mode = idle;
+
+
+
 
 // Functions
+
+//------------------------------------------------------------------------------
+// Name: ShortBeep
+// Function: Generate short beeps on the buzzer as used for keypresses
+// Parameters: void
+// Returns: void
+//------------------------------------------------------------------------------
+void ShortBeep(void){
+    P2OUT |= BUZZER;
+    beep_duration = 1000;
+}
+
+//------------------------------------------------------------------------------
+// Name: IncrementSecond
+// Function: Increment the seconds register by 1
+// Parameters: void
+// Returns: void
+//-------------------------------------------------------------------------------
+void IncrementSecond(void){
+
+    if (seconds < 0x60){
+        seconds++;
+        if((seconds & 0x0F) == 0x0A){
+            seconds += 6;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+// Name: IncrementMinute
+// Function: Increment the minutes register by 1
+// Parameters: void
+// Returns: void
+//-------------------------------------------------------------------------------
+void IncrementMinute(void){
+
+    if (minutes < 0x60){
+        minutes++;
+        if((minutes & 0x0F) == 0x0A){
+            minutes += 6;
+        }
+    }
+}
 
 //-------------------------------------------------------------------------------
 // Name: DecrementTime
@@ -41,6 +98,10 @@ void DecrementTime(void){
 
     // Only run the process if there's a valid value in the timer registers
     if(seconds == 0 &&  minutes == 0){
+        return;
+    }
+
+    if (timer_run == false){
         return;
     }
 
@@ -87,10 +148,14 @@ int main(void){
 //   P2OUT &= ~0x01;
 //    P1OUT &= ~0x04;
 
-    seconds = 0x55;
-    minutes = 0x13;
+    // Reset time registers
+    seconds = 0x00;
+    minutes = 0x00;
 
-    // Initial display update
+    // Initialise the display memory and the button registers
+    displaydata.button1 = false;
+    displaydata.button2 = false;
+    displaydata.button3 = false;
     displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
     displaydata.digit2 = GetSegmentData(minutes & 0x0F);
     displaydata.misc = 0xFC;
@@ -120,13 +185,142 @@ int main(void){
     // Main loop
     //------------------------------------------------------------------------------------
     for(;;){
-        Delay(400);
-        displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
-        displaydata.digit2 = GetSegmentData(minutes & 0x0F);
-        displaydata.misc = 0xFC;
-        displaydata.digit3 = GetSegmentData((seconds >> 4) & 0x0F);
-        displaydata.digit4 = GetSegmentData(seconds & 0x0F);
 
+        switch (mode){
+
+        case idle:
+            // Idle mode
+            // Update the display periodically
+            Delay(400);
+            displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
+            displaydata.digit2 = GetSegmentData(minutes & 0x0F);
+            displaydata.misc = 0xFC;
+            displaydata.digit3 = GetSegmentData((seconds >> 4) & 0x0F);
+            displaydata.digit4 = GetSegmentData(seconds & 0x0F);
+
+            // Check for user input
+            if (displaydata.button1 == true || displaydata.button2 == true || displaydata.button3 == true){
+                if(keydown == false){
+                    ShortBeep();
+                    // Action specific key input here
+                    if(displaydata.button1 == true){
+                        IncrementMinute();
+                    }
+                    if(displaydata.button2 == true){
+                        IncrementSecond();
+                    }
+                    if(displaydata.button3 == true){
+                        if(minutes > 0 || seconds > 0){
+                            timebase = 0;
+                            time_seconds = 0;
+                            P2OUT |= RELAY;
+                            timer_run = true;
+                            mode = run;
+                        }
+                    }
+
+                    keydown = true;
+                }
+            }
+
+            // Button 1 and 3 held down
+            if(displaydata.button1 == true && displaydata.button3 == true){
+                minutes = 0;
+                seconds = 0;
+            }
+            // All buttons released
+            if(displaydata.button1 == false && displaydata.button2 == false && displaydata.button3 == false){
+                keydown = false;
+            }
+            break;
+
+        //----------------------------------------------------------------------------------------------------
+        // run mode - timer will decrement and then stop when time is up
+        //----------------------------------------------------------------------------------------------------
+        case run:
+            // Update the display periodically
+            Delay(400);
+            displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
+            displaydata.digit2 = GetSegmentData(minutes & 0x0F);
+            displaydata.misc = 0xFC;
+            displaydata.digit3 = GetSegmentData((seconds >> 4) & 0x0F);
+            displaydata.digit4 = GetSegmentData(seconds & 0x0F);
+
+            if (displaydata.button1 == true || displaydata.button2 == true || displaydata.button3 == true){
+                if(keydown == false){
+                    ShortBeep();
+                    if(displaydata.button3 == true){
+                        P2OUT &= ~RELAY;
+                        timer_run = false;
+                        mode = stop;
+
+                    }
+
+                    keydown = true;
+                }
+            }
+
+            if(minutes == 0 && seconds == 0){
+                P2OUT &= ~RELAY;
+                timer_run = false;
+                unsigned char p, q;
+                for(q = 0; q < 4; q++){
+                    for(p = 0; p < 4; p++){
+                        ShortBeep();
+                        Delay(900);
+                        ShortBeep();
+                        Delay(900);
+                    }
+                Delay(10200);
+                }
+
+                mode = idle;
+            }
+
+            // All buttons released
+            if(displaydata.button1 == false && displaydata.button2 == false && displaydata.button3 == false){
+                keydown = false;
+            }
+
+            break;
+       //----------------------------------------------------------------------------------------------------
+       // stop mode - timer is halted, user can reset or resume
+       //----------------------------------------------------------------------------------------------------
+        case stop:
+            // Update the display periodically
+            Delay(400);
+            displaydata.digit1 = GetSegmentData((minutes >> 4) & 0x0F);
+            displaydata.digit2 = GetSegmentData(minutes & 0x0F);
+            displaydata.misc = 0xFC;
+            displaydata.digit3 = GetSegmentData((seconds >> 4) & 0x0F);
+            displaydata.digit4 = GetSegmentData(seconds & 0x0F);
+
+            if (displaydata.button1 == true || displaydata.button2 == true || displaydata.button3 == true){
+                if(keydown == false){
+                    ShortBeep();
+                    if(displaydata.button3 == true){
+                        P2OUT |= RELAY;
+                        timer_run = true;
+                        mode = run;
+
+                    }
+
+                    keydown = true;
+                }
+            }
+            // Button 1 and 3 held down
+            if(displaydata.button1 == true && displaydata.button3 == true){
+                minutes = 0;
+                seconds = 0;
+                mode = idle;
+            }
+
+            // All buttons released
+            if(displaydata.button1 == false && displaydata.button2 == false && displaydata.button3 == false){
+                keydown = false;
+            }
+            break;
+        }
 
     }
 
@@ -142,6 +336,13 @@ __interrupt void watchdog_timer(void){
 
     CallInISR();
     MuxDisplay();
+    if(beep_duration > 0){
+        beep_duration--;
+        if (beep_duration == 0){
+            P2OUT &= ~BUZZER;
+        }
+    }
+
     timebase++;
     if(timebase > 30){
         timebase = 0;

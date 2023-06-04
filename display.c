@@ -69,69 +69,92 @@ unsigned char GetSegmentData(unsigned char val){
 //---------------------------------------------------------------------------------------------
 // Name: MuxDisplay
 // Function: Do a display multiplex cycle
+//           Also, read the three push buttons attached to multiplex lines
 // This routine to be called in a timer interrupt so that the display is driven continuously
 // Uses: data in struct displaydata
 //----------------------------------------------------------------------------------------------
 void MuxDisplay(void){
-    if(divider < 10){
+    if(divider < 20){
         divider++;
     } else {
         divider = 0;
-
         switch (mux_cycle){
+
         case 0x00:
             P1OUT = displaydata.digit4;     // load pattern for digit 4
             P2OUT &= ~0x01;                 // Turn ON Q1
-            P2OUT |= 0x02;                  // Turn OFF Q2
-            P2OUT |= 0x04;                  // Turn OFF Q3
-            P2OUT |= 0x08;                  // Turn OFF Q4
-            P2OUT |= 0x10;                  // Turn OFF Q5
             break;
 
+        case 0x01:
+            if((P2IN & 0x20) != 0x20){
+                // P2.5 = 0, this means SW1 is pressed
+                displaydata.button1 = true;
+            } else {
+                displaydata.button1 = false;
+            }
+        break;
+
+        case 0x03:
+            P2OUT |= 0x1F;
+            break;
+//-------------------------------------------------------------------------
         case 0x04:
             P1OUT = displaydata.digit3;     // load pattern for digit 3
-            P2OUT |= 0x01;                 // Turn OFF Q1
             P2OUT &= ~0x02;                  // Turn ON Q2
-            P2OUT |= 0x04;                  // Turn OFF Q3
-            P2OUT |= 0x08;                  // Turn OFF Q4
-            P2OUT |= 0x10;                  // Turn OFF Q5
             break;
 
+        case 0x05:
+            if((P2IN & 0x20) != 0x20){
+                // P2.5 = 0, this means SW2 is pressed
+                displaydata.button2 = true;
+            } else {
+                displaydata.button2 = false;
+            }
+            break;
+
+        case 0x07:
+            P2OUT |= 0x1F;
+            break;
+//-----------------------------------------------------------------------------
         case 0x08:
             P1OUT = displaydata.misc;     // load pattern for misc segments
-            P2OUT |= 0x01;                 // Turn OFF Q1
-            P2OUT |= 0x02;                  // Turn OFF Q2
             P2OUT &= ~0x04;                  // Turn ON Q3
-            P2OUT |= 0x08;                  // Turn OFF Q4
-            P2OUT |= 0x10;                  // Turn OFF Q5
             break;
 
+        case 0x09:
+            if((P2IN & 0x20) != 0x20){
+                // P2.5 = 0, this means SW1 is pressed
+                displaydata.button3 = true;
+            } else {
+                displaydata.button3 = false;
+            }
+            break;
+
+        case 0x0B:
+            P2OUT |= 0x1F;
+            break;
+//----------------------------------------------------------------------
         case 0x0C:
             P1OUT = displaydata.digit2;     // load pattern for digit 2
-            P2OUT |= 0x01;                 // Turn OFF Q1
-            P2OUT |= 0x02;                  // Turn OFF Q2
-            P2OUT |= 0x04;                  // Turn OFF Q3
             P2OUT &= ~0x08;                  // Turn ON Q4
-            P2OUT |= 0x10;                  // Turn OFF Q5
-
             break;
 
+        case 0x0F:
+            P2OUT |= 0x1F;
+            break;
+//----------------------------------------------------------------------
         case 0x10:
             P1OUT = displaydata.digit1;     // load pattern for digit 1
-            P2OUT |= 0x01;                 // Turn OFF Q1
-            P2OUT |= 0x02;                  // Turn ON Q2
-            P2OUT |= 0x04;                  // Turn OFF Q3
-            P2OUT |= 0x08;                  // Turn OFF Q4
-            P2OUT &= ~0x10;                  // Turn OFF Q5
-
+            P2OUT &= ~0x10;                  // Turn ON Q5
             break;
 
-
-
+        case 0x13:
+            P2OUT |= 0x1F;
+            break;
         }
 
         mux_cycle++;
-        if(mux_cycle > 0x13){
+        if(mux_cycle >= 0x14){
             mux_cycle = 0;
         }
     }

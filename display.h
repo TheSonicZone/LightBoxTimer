@@ -15,8 +15,13 @@ typedef struct{
     unsigned char misc;
     unsigned char digit3;
     unsigned char digit4;
+    unsigned char button1;
+    unsigned char button2;
+    unsigned char button3;
 }display_data;
 
+#define false 0
+#define true  1
 
 // Function Prototypes
 //--------------------
